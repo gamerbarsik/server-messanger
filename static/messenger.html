@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ultra-Messenger</title>
+  <link rel="stylesheet" href="css/messenger.css" />
+</head>
+
+<body>
+  <div class="app">
+    <!-- Левая панель: заглушка -->
+    <aside class="sidebar-left">
+      <div class="dev-placeholder">
+        <div class="dev-text">В</div>
+        <div class="dev-text"> </div>
+        <div class="dev-text">р</div>
+        <div class="dev-text">а</div>
+        <div class="dev-text">з</div>
+        <div class="dev-text">р</div>
+        <div class="dev-text">а</div>
+        <div class="dev-text">б</div>
+        <div class="dev-text">о</div>
+        <div class="dev-text">т</div>
+        <div class="dev-text">к</div>
+        <div class="dev-text">е</div>
+      </div>
+    </aside>
+    <!-- Центральная панель -->
+    <main class="main-content">
+      <!-- Вкладки -->
+      <header class="friends-header">
+        <div class="tabs">
+          <button class="tab active" data-tab="online">В сети</button>
+          <button class="tab" data-tab="all">Все</button>
+          <button class="tab" data-tab="pending">Ожидание</button>
+        </div>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Поиск" />
+          <button id="addFriendBtn" class="add-friend-btn">Добавить в друзья</button>
+        </div>
+      </header>
+
+      <!-- Список друзей -->
+      <div class="friends-list" id="friendsList"></div>
+
+      <!-- Чат -->
+      <div id="chatContainer" class="chat-container" style="display: none;">
+        <div class="chat-header">
+          <button id="backToFriendsBtn" class="btn-back-chat"></button>
+          <div class="chat-title">
+            <div class="profile-chat-avatar-container">
+              <div class="profile-chat-avatar">U</div>
+              <div class="profile-chat-status-indicator"></div>
+            </div>
+            <div class="profile-chat-info">
+              <div class="profile-chat-nickname">Ник</div>
+              <div class="profile-chat-status">В сети</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="chatMessages" class="chat-messages"></div>
+
+        <div class="chat-input-area">
+          <textarea id="messageInput" placeholder="Напишите сообщение..." rows="1"></textarea>
+          <button id="sendBtn" class="send-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10h15v4H2z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Правая панель -->
+    <aside class="sidebar-right">
+      <div class="members-header">
+        <input type="text" id="membersSearch" placeholder="Поиск" />
+      </div>
+      <ul id="onlineUsers" class="members-list"></ul>
+    </aside>
+
+    <!-- Нижняя панель -->
+    <footer class="user-panel">
+      <div class="user-profile" id="userProfile">
+        <div class="profile-avatar-container">
+          <div class="profile-avatar" id="userAvatar">U</div>
+          <div class="status-indicator"></div>
+        </div>
+        <div class="profile-info">
+          <div id="profile-nickname">Ник</div>
+          <div id="profile-username">@юзернейм</div>
+        </div>
+      </div>
+
+      <!-- Скрытые кнопки мьюта -->
+      <div class="voice-controls" style="display: none;">
+        <button class="mic-btn">🎤</button>
+        <button class="deaf-btn">🔇</button>
+      </div>
+
+      <button id="logoutBtn" class="logout-btn">Выйти</button>
+    </footer>
+    <!-- Модальное окно "Добавить друга" -->
+    <div id="addFriendModal" class="modal">
+      <div class="modal-blur"></div>
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <h3>Добавить друга</h3>
+        <input type="text" id="friendUsername" placeholder="@Ник_пользователя" />
+        <div class="modal-buttons">
+          <button id="cancelAddFriend" class="btn-cancel">Отмена</button>
+          <button id="confirmAddFriend" class="btn-add">Добавить</button>
+        </div>
+      </div>
+    </div>
+    <!-- Модальные окна -->
+    <div id="editProfileModal" class="modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <h3>Редактировать профиль</h3>
+        <input type="text" id="editDisplayName" placeholder="Ваш ник" />
+        <div class="modal-buttons">
+          <button id="cancelEditProfile" class="btn-cancel">Отмена</button>
+          <button id="saveEditProfile" class="btn-save">Сохранить</button>
+        </div>
+      </div>
+    </div>
+    <!-- Модальное окно подтверждения выхода -->
+    <div id="logoutConfirmModal" class="modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <h3>Подтверждение</h3>
+        <p>Вы точно хотите выйти из аккаунта?</p>
+        <div class="modal-buttons">
+          <button id="cancelLogout" class="btn-cancel">Отмена</button>
+          <button id="confirmLogout" class="btn-logout-confirm">Выйти</button>
+        </div>
+      </div>
+    </div>
+    <script src="js/messenger.js"></script>
+</body>
+
+</html>
