@@ -157,22 +157,56 @@ body {
     background: rgba(255, 255, 255, 0.05);
 }
 
-.friend-avatar {
+.friend-avatar-container {
+    position: relative;
     width: 40px;
     height: 40px;
+    margin-right: 16px;
+}
+
+.friend-avatar {
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     background: var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    margin-right: 16px;
     color: white;
     position: relative;
 }
 
 .friend-avatar.offline {
     background: var(--offline);
+}
+
+.member-status {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    background: var(--online);
+    border: 2px solid var(--bg-secondary);
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.member-status.offline {
+    background: var(--offline);
+}
+
+.new-message-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border: 2px solid #ed4245;
+    border-radius: 50%;
+    z-index: 3;
 }
 
 .friend-info {
@@ -259,6 +293,18 @@ body {
     height: 36px;
 }
 
+/* === Стили для ников и юзернеймов в правой панели === */
+.member-nickname {
+    font-weight: bold;
+    color: var(--text-primary);
+    font-size: 15px;
+}
+
+.member-username {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
 .member-avatar {
     width: 100%;
     height: 100%;
@@ -270,37 +316,6 @@ body {
     font-weight: bold;
     color: white;
     font-size: 16px;
-}
-
-.member-status {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    width: 10px;
-    height: 10px;
-    background: var(--online);
-    border: 2px solid var(--bg-secondary);
-    border-radius: 50%;
-    z-index: 2;
-}
-
-.member-status.offline {
-    background: var(--offline);
-}
-
-.member-info {
-    flex: 1;
-}
-
-.member-nickname {
-    font-weight: bold;
-    color: var(--text-primary);
-    font-size: 15px;
-}
-
-.member-username {
-    color: var(--text-secondary);
-    font-size: 13px;
 }
 
 /* === Нижняя панель === */
@@ -326,6 +341,12 @@ body {
     margin-right: auto;
 }
 
+.user-profile:hover {
+    background: rgba(88, 101, 242, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
 .profile-avatar-container {
     position: relative;
     width: 36px;
@@ -343,12 +364,6 @@ body {
     font-weight: bold;
     color: white;
     font-size: 16px;
-}
-
-.user-profile:hover {
-    background: rgba(88, 101, 242, 0.15);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .status-indicator {
@@ -372,15 +387,14 @@ body {
     font-weight: bold;
     color: var(--text-primary);
     font-size: 15px;
-    /* ← крупнее */
 }
 
 #profile-username {
     color: var(--text-secondary);
     font-size: 13px;
-    /* ← мельче */
 }
 
+/* === Кнопка "Выйти" в нижней панели === */
 .logout-btn {
     width: 100px;
     height: 36px;
@@ -546,6 +560,69 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Модальное окно выхода */
+#logoutConfirmModal .modal-content {
+    width: 400px;
+    max-width: 90%;
+}
+
+#logoutConfirmModal p {
+    color: var(--text-secondary);
+    text-align: center;
+    margin: 16px 0 24px;
+    line-height: 1.5;
+}
+
+#logoutConfirmModal .modal-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+#logoutConfirmModal .modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#logoutConfirmModal .btn-cancel {
+    background: var(--bg-quaternary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+#logoutConfirmModal .btn-cancel:hover {
+    background: #3a3b41;
+    color: var(--text-primary);
+}
+
+#logoutConfirmModal .btn-logout-confirm {
+    background: linear-gradient(135deg, #ed4245, #d83c3e);
+    color: white;
+    border: none;
+    box-shadow:
+        0 4px 12px rgba(237, 66, 69, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+#logoutConfirmModal .btn-logout-confirm:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow:
+        0 8px 20px rgba(237, 66, 69, 0.45),
+        0 4px 8px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, #f05a5d, #e0484b);
+}
+
+#logoutConfirmModal .btn-logout-confirm:active {
+    transform: translateY(0) scale(0.98);
+    box-shadow:
+        0 2px 8px rgba(237, 66, 69, 0.3),
+        0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 /* === Система уведомлений === */
 .notification-container {
     position: fixed;
@@ -605,6 +682,11 @@ body {
     color: #ed4245;
 }
 
+.notification.info .notification-icon {
+    background: rgba(88, 101, 242, 0.2);
+    color: #5865f2;
+}
+
 .notification-icon svg {
     width: 16px;
     height: 16px;
@@ -641,7 +723,6 @@ body {
     overflow: hidden;
     position: relative;
     height: 100%;
-    /* ← важно для растягивания */
 }
 
 .chat-header {
@@ -792,7 +873,6 @@ body {
     }
 }
 
-/* Поле ввода — прижато к низу */
 .chat-input-area {
     background: var(--bg-tertiary);
     padding: 12px 16px;
@@ -801,7 +881,6 @@ body {
     gap: 12px;
     align-items: flex-end;
     margin-top: auto;
-    /* ← ключевое свойство */
 }
 
 #messageInput {
@@ -864,101 +943,6 @@ body {
 
 .send-btn:hover svg {
     transform: translateX(2px);
-}
-
-.btn-logout-confirm {
-    background: linear-gradient(135deg, #ed4245, #d83c3e);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow:
-        0 4px 12px rgba(237, 66, 69, 0.3),
-        0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.btn-logout-confirm:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow:
-        0 8px 20px rgba(237, 66, 69, 0.45),
-        0 4px 8px rgba(0, 0, 0, 0.3);
-    background: linear-gradient(135deg, #f05a5d, #e0484b);
-}
-
-.btn-logout-confirm:active {
-    transform: translateY(0) scale(0.98);
-    box-shadow:
-        0 2px 8px rgba(237, 66, 69, 0.3),
-        0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-/* === Модальное окно подтверждения выхода === */
-#logoutConfirmModal .modal-content {
-    width: 400px;
-    max-width: 90%;
-}
-
-#logoutConfirmModal p {
-    color: var(--text-secondary);
-    text-align: center;
-    margin: 16px 0 24px;
-    /* ← отступ от заголовка и до кнопок */
-    line-height: 1.5;
-}
-
-#logoutConfirmModal .modal-buttons {
-    display: flex;
-    gap: 12px;
-}
-
-#logoutConfirmModal .modal-buttons button {
-    flex: 1;
-    /* ← 50/50 */
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-#logoutConfirmModal .btn-cancel {
-    background: var(--bg-quaternary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
-}
-
-#logoutConfirmModal .btn-cancel:hover {
-    background: #3a3b41;
-    color: var(--text-primary);
-}
-
-#logoutConfirmModal .btn-logout-confirm {
-    background: linear-gradient(135deg, #ed4245, #d83c3e);
-    color: white;
-    border: none;
-    box-shadow:
-        0 4px 12px rgba(237, 66, 69, 0.3),
-        0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-#logoutConfirmModal .btn-logout-confirm:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow:
-        0 8px 20px rgba(237, 66, 69, 0.45),
-        0 4px 8px rgba(0, 0, 0, 0.3);
-    background: linear-gradient(135deg, #f05a5d, #e0484b);
-}
-
-#logoutConfirmModal .btn-logout-confirm:active {
-    transform: translateY(0) scale(0.98);
-    box-shadow:
-        0 2px 8px rgba(237, 66, 69, 0.3),
-        0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* === Прокрутка === */
