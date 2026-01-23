@@ -2,5 +2,5 @@ Flask==3.1.0
 Flask-SQLAlchemy==3.1.1
 Flask-SocketIO==5.3.6
 eventlet==0.33.3
-pg8000==1.34.0
+pg8000==1.31.5
 gunicorn==22.0.0
