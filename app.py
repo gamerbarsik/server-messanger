@@ -10,12 +10,14 @@ app = Flask(__name__, static_folder="static")
 # === Настройка базы данных ===
 database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    # Используем pg8000 вместо psycopg2
-    db_url = database_url.replace("postgres://", "postgresql+pg8000://")
-    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url.replace(
+        "postgres://", "postgresql://"
+    )
 else:
     os.makedirs("instance", exist_ok=True)
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///../instance/messenger.db"
+
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
