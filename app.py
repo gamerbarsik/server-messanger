@@ -265,6 +265,7 @@ def get_dm_history():
         )
     return jsonify(result)
 
+
 # Онлайн-пользователи (поиск только по юзернейму)
 @app.route("/api/online")
 def online_users():
