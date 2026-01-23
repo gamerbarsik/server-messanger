@@ -4,3 +4,4 @@ Flask-SocketIO==5.3.6
 eventlet==0.33.3
 pg8000==1.31.5
 gunicorn==22.0.0
+psycopg2-binary==2.9.9
