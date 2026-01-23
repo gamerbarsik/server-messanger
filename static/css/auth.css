@@ -1,0 +1,206 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background: #36393f;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-screen {
+  position: relative;
+  z-index: 10;
+}
+
+.auth-form {
+  background: #2f3136;
+  padding: 32px;
+  border-radius: 12px;
+  width: 340px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.auth-form h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #fff;
+  font-size: 24px;
+}
+
+.warning {
+  color: #f1c40f;
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.auth-form label {
+  display: block;
+  margin: 14px 0 6px;
+  font-weight: 600;
+  color: #b9bbbe;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #4f545c;
+  border-radius: 6px;
+  background: #40444b;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: #5865f2;
+  box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.3);
+}
+
+.auth-form input[type="password"] {
+  letter-spacing: 6px;
+}
+
+.auth-form button {
+  width: 100%;
+  padding: 12px;
+  background: #5865f2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.auth-form button:hover {
+  background: #4752c4;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.toggle {
+  text-align: center;
+  color: #b9bbbe;
+}
+
+.toggle span {
+  color: #5865f2;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.error {
+  color: #ed4245;
+  text-align: center;
+  margin-top: 12px;
+  min-height: 20px;
+}
+
+/* === Система уведомлений === */
+.notification-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 360px;
+}
+
+.notification {
+  background: #2f3136;
+  border-radius: 8px;
+  padding: 16px 20px;
+  color: white;
+  font-weight: 500;
+  font-size: 15px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  opacity: 0;
+  transform: translateX(120%);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.notification.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.notification.exiting {
+  opacity: 0;
+  transform: translateX(120%);
+}
+
+.notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  width: 100%;
+  transform-origin: left;
+  transform: scaleX(1);
+}
+
+/* Анимация прогресса */
+@keyframes progress {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.notification.show .notification-progress {
+  animation: progress 5s linear forwards;
+}
+
+.notification.exiting .notification-progress {
+  transform: scaleX(0);
+}
+
+.notification-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notification.success .notification-icon {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+}
+
+.notification.error .notification-icon {
+  background: rgba(237, 66, 69, 0.2);
+  color: #ed4245;
+}
+
+.notification-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.notification-text {
+  line-height: 1.4;
+}
