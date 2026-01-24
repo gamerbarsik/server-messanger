@@ -618,33 +618,39 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateUnreadBadges() {
+        // Обновляем в списке друзей (центральная панель)
         document.querySelectorAll('.friend-item').forEach(item => {
             const userId = item.dataset.userId;
             const avatarContainer = item.querySelector('.friend-avatar-container');
             if (!userId || !avatarContainer) return;
 
-            const oldIndicator = avatarContainer.querySelector('.new-message-indicator');
-            if (oldIndicator) oldIndicator.remove();
+            // Удаляем старые счётчики
+            const oldBadge = avatarContainer.querySelector('.unread-count-badge');
+            if (oldBadge) oldBadge.remove();
 
+            // Добавляем новый, если есть непрочитанные
             if (unreadMessages[userId] > 0) {
-                const indicator = document.createElement('div');
-                indicator.className = 'new-message-indicator';
-                avatarContainer.appendChild(indicator);
+                const badge = document.createElement('div');
+                badge.className = 'unread-count-badge';
+                badge.textContent = unreadMessages[userId] > 9 ? '9+' : unreadMessages[userId];
+                avatarContainer.appendChild(badge);
             }
         });
 
+        // Обновляем в правой панели (онлайн-пользователи)
         document.querySelectorAll('.member-item').forEach(item => {
             const userId = item.dataset.userId;
             const avatarContainer = item.querySelector('.member-avatar-container');
             if (!userId || !avatarContainer) return;
 
-            const oldIndicator = avatarContainer.querySelector('.new-message-indicator');
-            if (oldIndicator) oldIndicator.remove();
+            const oldBadge = avatarContainer.querySelector('.unread-count-badge');
+            if (oldBadge) oldBadge.remove();
 
             if (unreadMessages[userId] > 0) {
-                const indicator = document.createElement('div');
-                indicator.className = 'new-message-indicator';
-                avatarContainer.appendChild(indicator);
+                const badge = document.createElement('div');
+                badge.className = 'unread-count-badge';
+                badge.textContent = unreadMessages[userId] > 9 ? '9+' : unreadMessages[userId];
+                avatarContainer.appendChild(badge);
             }
         });
     }

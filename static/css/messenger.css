@@ -945,6 +945,25 @@ body {
     transform: translateX(2px);
 }
 
+/* === Счётчик непрочитанных сообщений на аватарке === */
+.unread-count-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ed4245;
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    box-shadow: 0 0 0 2px var(--bg-secondary);
+    z-index: 4;
+}
+
 /* === Прокрутка === */
 ::-webkit-scrollbar {
     width: 8px;
