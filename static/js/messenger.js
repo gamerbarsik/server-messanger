@@ -10,8 +10,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var currentTab = 'online';
     let currentChatUser = null;
-    let unreadMessages = {};
     let lastMessageTimestamps = {};
+    let unreadMessages = {};
+    let friendList = [];
 
     // Обновление профиля
     document.getElementById('profile-nickname').textContent = user.display_name;
@@ -221,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             var friendItem = document.createElement('div');
             friendItem.className = 'friend-item';
-            friendItem.dataset.userId = userId; // ← для счётчика
+            friendItem.dataset.userId = userId;
 
             var avatarContainer = document.createElement('div');
             avatarContainer.className = 'friend-avatar-container';
@@ -424,49 +425,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.querySelector('.profile-chat-avatar').textContent = displayName.charAt(0).toUpperCase();
 
-        loadChatHistory(userId);
-    }
-
-    function loadChatHistory(userId) {
-        if (!userId || !user.id) return;
-
+        // Загружаем полную историю
         fetch(`/api/messages/history?user1_id=${encodeURIComponent(user.id)}&user2_id=${encodeURIComponent(userId)}`)
             .then(res => res.json())
             .then(messages => {
                 const list = document.getElementById('chatMessages');
-                const wasAtBottom = list.scrollHeight - list.scrollTop === list.clientHeight;
-
                 list.innerHTML = '';
 
                 messages.forEach(msg => {
-                    const div = document.createElement('div');
-                    div.className = `message${msg.is_own ? ' own' : ''}`;
-
-                    const textDiv = document.createElement('div');
-                    textDiv.className = 'message-text';
-                    textDiv.textContent = msg.text;
-
-                    const timeDiv = document.createElement('div');
-                    timeDiv.className = 'message-timestamp';
-                    timeDiv.textContent = msg.timestamp;
-
-                    div.appendChild(textDiv);
-                    div.appendChild(timeDiv);
-                    list.appendChild(div);
+                    addMessageToChat(msg.text, msg.is_own, msg.timestamp);
+                    lastMessageTimestamps[userId] = msg.timestamp + '_' + msg.message_id;
                 });
 
-                if (wasAtBottom) {
-                    list.scrollTop = list.scrollHeight;
-                }
-
-                if (currentChatUser && currentChatUser.id === userId) {
-                    if (unreadMessages[userId] > 0) {
-                        unreadMessages[userId] = 0;
-                        updateUnreadBadges();
-                    }
+                if (unreadMessages[userId] > 0) {
+                    unreadMessages[userId] = 0;
+                    updateUnreadBadges();
                 }
             })
             .catch(err => console.error('Ошибка загрузки истории:', err));
+    }
+
+    function addMessageToChat(text, isOwn, timestamp) {
+        const div = document.createElement('div');
+        div.className = `message${isOwn ? ' own' : ''}`;
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'message-text';
+        textDiv.textContent = text;
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-timestamp';
+        timeDiv.textContent = timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        div.appendChild(textDiv);
+        div.appendChild(timeDiv);
+        document.getElementById('chatMessages').appendChild(div);
+        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
     }
 
     document.getElementById('sendBtn').addEventListener('click', sendMessage);
@@ -492,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
             .then(() => {
                 document.getElementById('messageInput').value = '';
-                loadChatHistory(currentChatUser.id);
+                addMessageToChat(text, true);
             })
             .catch(err => {
                 showNotification('Ошибка отправки', false);
@@ -506,11 +500,82 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelector('.friends-header').style.display = 'block';
     });
 
+    // === Умный polling новых сообщений ===
+
+    function loadNewMessages(userId) {
+        const lastTime = lastMessageTimestamps[userId] || '';
+
+        fetch(`/api/messages/history?user1_id=${encodeURIComponent(user.id)}&user2_id=${encodeURIComponent(userId)}`)
+            .then(res => res.json())
+            .then(messages => {
+                const newMessages = messages.filter(msg => {
+                    const msgTime = msg.timestamp + '_' + msg.message_id;
+                    return msgTime > lastTime;
+                });
+
+                if (newMessages.length === 0) return;
+
+                const lastMsg = newMessages[newMessages.length - 1];
+                lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
+
+                newMessages.forEach(msg => {
+                    if (!msg.is_own) {
+                        unreadMessages[userId] = (unreadMessages[userId] || 0) + 1;
+                        updateUnreadBadges();
+
+                        if (!currentChatUser || currentChatUser.id !== userId) {
+                            playNotificationSound();
+
+                            const totalUnread = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
+                            if (totalUnread === 1) {
+                                showInfoNotification(`Получено новое сообщение`);
+                            } else {
+                                showInfoNotification(`У вас ${totalUnread} непрочитанных сообщений!`);
+                            }
+                        }
+                    }
+                });
+
+                if (currentChatUser && currentChatUser.id === userId) {
+                    newMessages.forEach(msg => {
+                        addMessageToChat(msg.text, msg.is_own, msg.timestamp);
+                    });
+
+                    if (unreadMessages[userId] > 0) {
+                        unreadMessages[userId] = 0;
+                        updateUnreadBadges();
+                    }
+                }
+            })
+            .catch(err => console.warn('Ошибка загрузки новых сообщений:', err));
+    }
+
+    function loadFriendsForPolling() {
+        fetch(`/api/friends?userId=${encodeURIComponent(user.id)}`)
+            .then(res => res.json())
+            .then(friends => {
+                friendList = friends.filter(f => f.id !== user.id);
+            })
+            .catch(err => console.warn('Не удалось загрузить друзей для polling:', err));
+    }
+
+    // Запуск polling каждые 1.5 секунды
+    loadFriendsForPolling();
+    setInterval(() => {
+        if (friendList.length === 0) {
+            loadFriendsForPolling();
+        } else {
+            friendList.forEach(friend => {
+                loadNewMessages(friend.id);
+            });
+        }
+    }, 1500);
+
     // === Уведомления ===
 
     function playNotificationSound() {
         try {
-            const audio = new Audio('../sounds/notification.mp3');
+            const audio = new Audio('/static/sounds/notification.mp3');
             audio.volume = 0.7;
             audio.play().catch(e => console.warn('Звук отключён:', e));
         } catch (e) {
@@ -552,62 +617,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 5000);
     }
 
-    // Фоновая проверка сообщений
-    setInterval(checkAllMessages, 2000);
-
-    function checkAllMessages() {
-        if (!user || !user.id) return;
-
-        fetch(`/api/friends?userId=${encodeURIComponent(user.id)}`)
-            .then(res => res.json())
-            .then(friends => {
-                friends.forEach(friend => {
-                    if (friend.id === user.id) return;
-
-                    fetch(`/api/messages/history?user1_id=${encodeURIComponent(user.id)}&user2_id=${encodeURIComponent(friend.id)}`)
-                        .then(res => res.json())
-                        .then(messages => {
-                            const lastMsg = messages[messages.length - 1];
-                            if (!lastMsg) return;
-
-                            const lastTime = lastMessageTimestamps[friend.id] || '';
-                            const newTime = lastMsg.timestamp + lastMsg.message_id;
-
-                            if (newTime !== lastTime) {
-                                lastMessageTimestamps[friend.id] = newTime;
-
-                                if (!lastMsg.is_own) {
-                                    const wasInChat = currentChatUser && currentChatUser.id === friend.id;
-
-                                    if (!wasInChat) {
-                                        unreadMessages[friend.id] = (unreadMessages[friend.id] || 0) + 1;
-                                        updateUnreadBadges();
-                                        playNotificationSound();
-
-                                        const totalUnread = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
-                                        if (totalUnread === 1) {
-                                            showInfoNotification(`Получено новое сообщение`);
-                                        } else {
-                                            showInfoNotification(`У вас ${totalUnread} непрочитанных сообщений!`);
-                                        }
-                                    }
-                                }
-                            }
-                        })
-                        .catch(err => console.warn('Ошибка проверки сообщений:', err));
-                });
-            })
-            .catch(err => console.warn('Ошибка загрузки друзей:', err));
-    }
-
     function updateUnreadBadges() {
-        // Обновляем в списке друзей
         document.querySelectorAll('.friend-item').forEach(item => {
             const userId = item.dataset.userId;
             const avatarContainer = item.querySelector('.friend-avatar-container');
             if (!userId || !avatarContainer) return;
 
-            // Удаляем старые индикаторы
             const oldIndicator = avatarContainer.querySelector('.new-message-indicator');
             if (oldIndicator) oldIndicator.remove();
 
@@ -618,7 +633,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Обновляем в правой панели
         document.querySelectorAll('.member-item').forEach(item => {
             const userId = item.dataset.userId;
             const avatarContainer = item.querySelector('.member-avatar-container');
