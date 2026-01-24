@@ -39,6 +39,7 @@ class Message(db.Model):
     from_user_id = db.Column(db.String(10), db.ForeignKey("user.id"), nullable=False)
     to_user_id = db.Column(db.String(10), db.ForeignKey("user.id"), nullable=False)
     text = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 
@@ -469,10 +470,32 @@ def get_dm_history():
                 "author_name": author.display_name if author else "Unknown",
                 "text": msg.text,
                 "is_own": msg.from_user_id == user1_id,
+                "is_read": msg.is_read,
                 "timestamp": msg.created_at.strftime("%H:%M") if msg.created_at else "",
             }
         )
     return jsonify(result)
+
+
+@app.route("/api/messages/mark-read", methods=["POST"])
+def mark_messages_as_read():
+    data = request.get_json()
+    user_id = data.get("user_id")
+    sender_id = data.get("sender_id")
+
+    if not user_id or not sender_id:
+        return jsonify({"error": "Не хватает данных"}), 400
+
+    # Отмечаем все сообщения от sender_id как прочитанные
+    messages = Message.query.filter_by(
+        to_user_id=user_id, from_user_id=sender_id, is_read=False
+    ).all()
+
+    for msg in messages:
+        msg.is_read = True
+
+    db.session.commit()
+    return jsonify({"success": True, "count": len(messages)})
 
 
 if __name__ == "__main__":
