@@ -109,11 +109,6 @@ def static_files(path):
         return send_from_directory(app.static_folder, "index.html")
 
 
-# # === Статические файлы для модульной структуры ===
-# @app.route("/static/js/<path:filename>")
-# def static_js(filename):
-#     return send_from_directory(os.path.join(app.static_folder, "js"), filename)
-
 # Регистрация
 @app.route("/api/register", methods=["POST"])
 def register():
@@ -185,6 +180,21 @@ def logout():
             db.session.commit()
     return jsonify({"success": True})
 
+# === Проверка авторизации ===
+@app.route("/api/check-auth", methods=["POST"])
+def check_auth():
+    data = request.get_json()
+    user_id = data.get("user_id")
+    username = data.get("username")
+
+    if not user_id or not username:
+        return jsonify({"authorized": False}), 403
+
+    user = User.query.filter_by(id=user_id, username=username).first()
+    if user:
+        return jsonify({"authorized": True})
+    else:
+        return jsonify({"authorized": False}), 403
 
 # Heartbeat
 @app.route("/api/heartbeat", methods=["POST"])

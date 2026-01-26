@@ -1,6 +1,6 @@
 import { state } from '../core/state.js';
 import { api } from '../core/api.js';
-import { loadFriends, searchFriends, addFriend } from './friends.js';
+import { loadFriends, searchFriends, addFriend, updateUnreadBadges, showNotification } from './friends.js';
 import { openChat, sendMessage } from './chat.js';
 import { unlockAudio } from '../utils/audio.js';
 
