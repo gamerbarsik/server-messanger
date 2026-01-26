@@ -5,17 +5,19 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder="static")
 
 # === Настройка базы данных ===
-database_url = os.environ.get('DATABASE_URL')
+database_url = os.environ.get("DATABASE_URL")
 if database_url:
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://")
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url.replace(
+        "postgres://", "postgresql://"
+    )
 else:
-    os.makedirs('instance', exist_ok=True)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../instance/messenger.db'
+    os.makedirs("instance", exist_ok=True)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///../instance/messenger.db"
 
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 
@@ -106,6 +108,11 @@ def static_files(path):
     except FileNotFoundError:
         return send_from_directory(app.static_folder, "index.html")
 
+
+# # === Статические файлы для модульной структуры ===
+# @app.route("/static/js/<path:filename>")
+# def static_js(filename):
+#     return send_from_directory(os.path.join(app.static_folder, "js"), filename)
 
 # Регистрация
 @app.route("/api/register", methods=["POST"])
