@@ -181,32 +181,3 @@ export function addFriend(nickname) {
         showNotification('Нет связи с сервером', false);
     });
 }
-
-export function showNotification(text, isSuccess = false) {
-    const container = document.getElementById('notificationContainer') || (() => {
-        const c = document.createElement('div');
-        c.id = 'notificationContainer';
-        c.className = 'notification-container';
-        document.body.appendChild(c);
-        return c;
-    })();
-
-    const n = document.createElement('div');
-    n.className = `notification ${isSuccess ? 'success' : 'error'}`;
-    n.innerHTML = `
-    <div class="notification-icon">
-      ${isSuccess
-            ? '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 19.414l-6.707-6.707 1.414-1.414L9 16.586l9.293-9.293 1.414 1.414L9 19.414z"/></svg>'
-            : '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
-        }
-    </div>
-    <div class="notification-text">${text}</div>
-    <div class="notification-progress"></div>
-  `;
-    container.appendChild(n);
-    setTimeout(() => container.classList.add('show'), 10);
-    setTimeout(() => {
-        n.remove();
-        if (container.children.length === 0) container.classList.remove('show');
-    }, 5000);
-}
