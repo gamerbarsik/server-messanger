@@ -1,7 +1,7 @@
 import { state } from '../core/state.js';
 import { api } from '../core/api.js';
 import { openChat } from './chat.js';
-import { showNotification } from './notifications.js';
+// import { showNotification } from './notifications.js';
 
 export function renderFriends(data, tab) {
     const list = document.getElementById('friendsList');
