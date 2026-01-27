@@ -8,47 +8,97 @@
   <link rel="stylesheet" href="css/auth.css" />
 </head>
 
+<script>
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: username, password: password })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem('user', JSON.stringify({
+            id: data.userId,
+            username: data.username,
+            display_name: data.displayName
+          }));
+          window.location.href = 'messenger.html';
+        } else {
+          alert(data.error || 'Ошибка входа');
+        }
+      });
+  });
+
+  document.getElementById('registerForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const displayName = document.getElementById('regDisplayName').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const password2 = document.getElementById('regPassword2').value;
+
+    if (password !== password2) {
+      alert('Пароли не совпадают');
+      return;
+    }
+
+    fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName, username, password, password2 })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Регистрация успешна! Теперь войдите.');
+          document.getElementById('registerForm').reset();
+        } else {
+          alert(data.error || 'Ошибка регистрации');
+        }
+      });
+  });
+</script>
+
 <body>
-  <!-- Окно входа -->
-  <div id="loginScreen" class="auth-screen">
-    <div class="auth-form">
-      <h2>Вход</h2>
-      <p class="warning">Вход по почте временно не работает</p>
-
-      <label>Юзернейм/Почта</label>
-      <input type="text" id="loginIdentifier" placeholder="@ваш_юзернейм" />
-
-      <label>Пароль</label>
-      <input type="password" id="loginPassword" placeholder="••••••" />
-
-      <button id="loginBtn">Войти</button>
-      <p class="toggle">Ещё нет аккаунта? <span id="showRegister">Зарегистрироваться</span></p>
-      <p id="loginError" class="error"></p>
+  <!-- Форма входа -->
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="loginUsername">Имя пользователя</label>
+      <input type="text" id="loginUsername" name="username" required>
     </div>
-  </div>
-
-  <!-- Окно регистрации -->
-  <div id="registerScreen" class="auth-screen" style="display: none;">
-    <div class="auth-form">
-      <h2>Регистрация</h2>
-
-      <label>Ник</label>
-      <input type="text" id="regDisplayName" placeholder="Ваш_ник" />
-
-      <label>Юзернейм</label>
-      <input type="text" id="regUsername" placeholder="@ваш_юзернейм" />
-
-      <label>Пароль</label>
-      <input type="password" id="regPassword" placeholder="••••••" />
-
-      <label>Повтор пароля</label>
-      <input type="password" id="regPassword2" placeholder="••••••" />
-
-      <button id="registerBtn">Зарегистрироваться</button>
-      <p class="toggle">Уже есть аккаунт? <span id="showLogin">Войти</span></p>
-      <p id="registerError" class="error"></p>
+    <div class="form-group">
+      <label for="loginPassword">Пароль</label>
+      <input type="password" id="loginPassword" name="password" required>
     </div>
-  </div>
+    <button type="submit" class="btn btn-primary">Войти</button>
+  </form>
+
+  <!-- Форма регистрации -->
+  <form id="registerForm">
+    <div class="form-group">
+      <label for="regDisplayName">Отображаемое имя</label>
+      <input type="text" id="regDisplayName" name="displayName" required>
+    </div>
+    <div class="form-group">
+      <label for="regUsername">Имя пользователя (@...)</label>
+      <input type="text" id="regUsername" name="username" required>
+    </div>
+    <div class="form-group">
+      <label for="regPassword">Пароль</label>
+      <input type="password" id="regPassword" name="password" required>
+    </div>
+    <div class="form-group">
+      <label for="regPassword2">Подтвердите пароль</label>
+      <input type="password" id="regPassword2" name="password2" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+  </form>
 
   <script type="module" src="js/core/auth.js"></script>
 </body>
