@@ -141,7 +141,17 @@
         </div>
       </div>
     </div>
-    <script type="module" src="js/messenger.js"></script>
+    <!-- <script src="js/messenger.js"></script> -->
+
+    <!-- Порядок важен! -->
+    <script src="/static/js/auth-check.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/notifications.js"></script>
+    <script src="/static/js/friends.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/messenger.js"></script> <!-- DOMContentLoaded здесь -->
+
 </body>
+
 
 </html>
