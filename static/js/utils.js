@@ -12,9 +12,9 @@ function getMoscowTime() {
 }
 
 // Инициализация звука
-let audioContext = null;
-let notificationBuffer = null;
-let isAudioUnlocked = false;
+// let audioContext = null;
+// let notificationBuffer = null;
+// let isAudioUnlocked = false;
 
 async function initAudio() {
     if (audioContext) return;
