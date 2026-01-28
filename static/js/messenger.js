@@ -804,6 +804,73 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // === МОБИЛЬНАЯ АДАПТАЦИЯ ===
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Скрыть левую панель
+        const leftPanel = document.querySelector('.sidebar-left');
+        if (leftPanel) leftPanel.style.display = 'none';
+
+        // Создать оверлей для правой панели
+        const overlay = document.createElement('div');
+        overlay.className = 'overlay';
+        document.body.appendChild(overlay);
+
+        const rightPanel = document.querySelector('.sidebar-right');
+        if (rightPanel) rightPanel.classList.add('mobile-panel');
+
+        // Стилизовать кнопку как круглую с +
+        const addButton = document.getElementById('addFriendBtn');
+        if (addButton) {
+            addButton.textContent = '+';
+            addButton.style.width = '56px';
+            addButton.style.height = '56px';
+            addButton.style.borderRadius = '50%';
+            addButton.style.fontSize = '28px';
+            addButton.style.fontWeight = 'bold';
+            addButton.style.display = 'flex';
+            addButton.style.alignItems = 'center';
+            addButton.style.justifyContent = 'center';
+            addButton.style.position = 'fixed';
+            addButton.style.bottom = '24px';
+            addButton.style.right = '24px';
+            addButton.style.zIndex = '1000';
+            addButton.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+        }
+
+        // Свайп-логика
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+
+            if (diff > 50 && !rightPanel.classList.contains('open')) {
+                // Свайп влево → открыть
+                rightPanel.classList.add('open');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            } else if (diff < -50 && rightPanel.classList.contains('open')) {
+                // Свайп вправо → закрыть
+                rightPanel.classList.remove('open');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+
+        overlay.addEventListener('click', () => {
+            rightPanel.classList.remove('open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+    }
+
     // Запуск
     sendHeartbeat();
     setInterval(sendHeartbeat, 30000);
