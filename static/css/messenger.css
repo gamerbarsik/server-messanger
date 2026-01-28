@@ -969,11 +969,10 @@ body {
         display: none !important;
     }
 
-    /* Основной контейнер — на всю ширину */
+    /* Основной контент — на всю ширину */
     .app {
         grid-template-columns: 1fr;
         /* только центр */
-        grid-template-rows: 1fr 56px;
         gap: 0;
         padding: 0;
     }
@@ -988,6 +987,7 @@ body {
         z-index: 999;
         transform: translateX(0);
         transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        box-shadow: -4px 0 12px rgba(0, 0, 0, 0.4);
     }
 
     .sidebar-right.open {
@@ -1013,7 +1013,7 @@ body {
         visibility: visible;
     }
 
-    /* Кнопка "Добавить друга" → круглая с "+" */
+    /* Кнопка "Добавить в друзья" → круглая с "+" */
     #addFriendBtn {
         position: fixed;
         bottom: 24px;
@@ -1036,23 +1036,16 @@ body {
         line-height: 1;
     }
 
-    /* Скрыть оригинальную кнопку с текстом */
-    .add-friend-btn {
-        display: none !important;
-    }
-
+    /* Скрыть оригинальную надпись */
     .add-friend-btn {
         display: none !important;
     }
 
     /* Убрать отступы */
-    .main-content {
-        border-radius: 0;
-    }
-
+    .main-content,
     .friends-header,
     .chat-header {
-        padding: 12px;
+        border-radius: 0;
     }
 
     .tabs {
