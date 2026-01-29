@@ -844,6 +844,11 @@ document.addEventListener('DOMContentLoaded', function () {
             overlay.classList.remove('active');
             document.body.style.overflow = '';
         });
+
+        const addBtn = document.getElementById('addFriendBtn');
+        if (addBtn) {
+            addBtn.textContent = '+';
+        }
     }
 
     // Запуск
