@@ -1014,7 +1014,7 @@ body {
     }
 
     /* Кнопка "Добавить в друзья" → круглая с "+" */
-    #addFriendBtn {
+    #addFriendBtn.add-friend-btn {
         position: fixed;
         bottom: 24px;
         right: 24px;
@@ -1033,12 +1033,16 @@ body {
         cursor: pointer;
         z-index: 1000;
         padding: 0;
+        margin: 0;
         line-height: 1;
     }
 
     /* Скрыть оригинальную надпись */
-    .add-friend-btn {
-        display: none !important;
+    #addFriendBtn.add-friend-btn:hover {
+        transform: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        background: var(--accent);
+        /* без hover-эффекта */
     }
 
     /* Убрать отступы */
