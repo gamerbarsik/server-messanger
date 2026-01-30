@@ -165,7 +165,7 @@ document.getElementById('loginBtn').addEventListener('click', async function () 
                 username: data.username,
                 display_name: data.displayName
             }));
-            window.location.href = 'messenger.html';
+            window.location.href = 'index.html';
         } else {
             showNotification(data.error || 'Неверный логин или пароль', false);
         }
