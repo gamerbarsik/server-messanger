@@ -1,8 +1,9 @@
 import { state } from './state.js';
 import { initAudio, unlockAudio } from '../utils/audio.js';
 import { loadFriends, renderFriends, searchFriends, addFriend, loadOnlineUsers } from '../ui/friends.js';
-import { openChat, sendMessage, checkAllMessages, updateUnreadBadges } from '../ui/chat.js';
+import { openChat, sendMessage, checkAllMessages } from '../ui/chat.js';
 import { initMobileUI } from '../ui/mobile.js';
+import { updateUnreadBadges } from '../ui/badges.js';
 
 export function initApp() {
     state.user = JSON.parse(localStorage.getItem('user'));
