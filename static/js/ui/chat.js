@@ -1,29 +1,15 @@
+import { state } from '../core/state.js';
 import { showNotification, showInfoNotification } from '../utils/notifications.js';
 import { playNotificationSound } from '../utils/audio.js';
 
-let currentChatUser = null;
-let lastMessageTimestamps = {};
-let unreadMessages = {};
-let isFirstLoad = true;
-let hasShownSummary = false;
-
-export function getChatState() {
-    return { currentChatUser, lastMessageTimestamps, unreadMessages, isFirstLoad, hasShownSummary };
-}
-
-export function setChatState(newState) {
-    Object.assign({ currentChatUser, lastMessageTimestamps, unreadMessages, isFirstLoad, hasShownSummary }, newState);
-}
-
-// --- Вспомогательные функции ---
 export function getMoscowTime() {
     const now = new Date();
-    const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
-    return moscowTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return new Date(now.getTime() + 3 * 60 * 60 * 1000)
+        .toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function saveMessageToHistory(userId, messageData, user) {
-    const key = `chat_history_${user.id}_${userId}`;
+export function saveMessageToHistory(userId, messageData) {
+    const key = `chat_history_${state.user.id}_${userId}`;
     let history = JSON.parse(localStorage.getItem(key) || '[]');
     if (!history.some(msg => msg.message_id === messageData.message_id)) {
         history.push(messageData);
@@ -32,8 +18,8 @@ export function saveMessageToHistory(userId, messageData, user) {
     }
 }
 
-export function loadHistoryFromStorage(userId, user) {
-    const key = `chat_history_${user.id}_${userId}`;
+export function loadHistoryFromStorage(userId) {
+    const key = `chat_history_${state.user.id}_${userId}`;
     const history = JSON.parse(localStorage.getItem(key) || '[]');
     const list = document.getElementById('chatMessages');
     list.innerHTML = '';
@@ -48,21 +34,17 @@ function addMessageToChat(text, isOwn, timestamp = null, messageId = null) {
     const div = document.createElement('div');
     div.className = `message${isOwn ? ' own' : ''}`;
     if (messageId) div.dataset.messageId = messageId;
-    const textDiv = document.createElement('div');
-    textDiv.className = 'message-text';
-    textDiv.textContent = text;
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'message-timestamp';
-    timeDiv.textContent = timestamp || getMoscowTime();
-    div.appendChild(textDiv);
-    div.appendChild(timeDiv);
+    div.innerHTML = `
+    <div class="message-text">${text}</div>
+    <div class="message-timestamp">${timestamp || getMoscowTime()}</div>
+  `;
     document.getElementById('chatMessages').appendChild(div);
     document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
 }
 
-export function openChat(userId, displayName, username, isOnline, user) {
-    if (!userId || userId === user.id) return;
-    currentChatUser = { id: userId, display_name: displayName, username, is_online: isOnline };
+export function openChat(userId, displayName, username, isOnline) {
+    if (!userId || userId === state.user.id) return;
+    state.currentChatUser = { id: userId, display_name: displayName, username, is_online: isOnline };
     document.getElementById('friendsList').style.display = 'none';
     document.querySelector('.friends-header').style.display = 'none';
     document.getElementById('chatContainer').style.display = 'flex';
@@ -80,148 +62,126 @@ export function openChat(userId, displayName, username, isOnline, user) {
     }
     document.querySelector('.profile-chat-avatar').textContent = displayName.charAt(0).toUpperCase();
 
-    const hasLocalHistory = loadHistoryFromStorage(userId, user);
-
-    fetch(`/api/messages/history?user1_id=${encodeURIComponent(user.id)}&user2_id=${encodeURIComponent(userId)}`)
+    const hasLocal = loadHistoryFromStorage(userId);
+    fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(userId)}`)
         .then(res => res.json())
         .then(messages => {
-            messages.forEach(msg => {
-                saveMessageToHistory(userId, {
-                    message_id: msg.message_id,
-                    text: msg.text,
-                    is_own: msg.is_own,
-                    timestamp: msg.timestamp
-                }, user);
-            });
-            if (!hasLocalHistory) loadHistoryFromStorage(userId, user);
+            messages.forEach(msg => saveMessageToHistory(userId, { ...msg }));
+            if (!hasLocal) loadHistoryFromStorage(userId);
             if (messages.length > 0) {
-                const lastMsg = messages[messages.length - 1];
-                lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
+                const last = messages[messages.length - 1];
+                state.lastMessageTimestamps[userId] = last.timestamp + '_' + last.message_id;
             }
-        })
-        .catch(err => console.error('Ошибка загрузки истории:', err));
+        });
 
-    if (unreadMessages[userId] > 0) {
-        unreadMessages[userId] = 0;
+    if (state.unreadMessages[userId] > 0) {
+        state.unreadMessages[userId] = 0;
         updateUnreadBadges();
     }
 }
 
-export function sendMessage(user) {
+export function sendMessage() {
     const text = document.getElementById('messageInput').value.trim();
-    if (!text || !currentChatUser) return;
+    if (!text || !state.currentChatUser) return;
     const tempId = 'temp_' + Date.now();
-    const moscowTime = getMoscowTime();
-    addMessageToChat(text, true, moscowTime, tempId);
-    saveMessageToHistory(currentChatUser.id, {
+    const time = getMoscowTime();
+    addMessageToChat(text, true, time, tempId);
+    saveMessageToHistory(state.currentChatUser.id, {
         message_id: tempId,
-        text: text,
+        text,
         is_own: true,
-        timestamp: moscowTime
-    }, user);
+        timestamp: time
+    });
     fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            from_user_id: user.id,
-            to_user_id: currentChatUser.id,
-            text: text
+            from_user_id: state.user.id,
+            to_user_id: state.currentChatUser.id,
+            text
         })
     })
         .then(() => {
             document.getElementById('messageInput').value = '';
-            loadNewMessages(currentChatUser.id, user);
+            loadNewMessages(state.currentChatUser.id);
         })
         .catch(err => {
             showNotification('Ошибка отправки', false);
-            const tempMsg = document.querySelector(`[data-message-id="${tempId}"]`);
-            if (tempMsg) tempMsg.remove();
+            const el = document.querySelector(`[data-message-id="${tempId}"]`);
+            if (el) el.remove();
         });
 }
 
-export function loadNewMessages(userId, user) {
-    const lastTime = lastMessageTimestamps[userId] || '';
-    fetch(`/api/messages/history?user1_id=${encodeURIComponent(user.id)}&user2_id=${encodeURIComponent(userId)}`)
+export function loadNewMessages(userId) {
+    const lastTime = state.lastMessageTimestamps[userId] || '';
+    fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(userId)}`)
         .then(res => res.json())
         .then(messages => {
-            const newMessages = messages.filter(msg => {
-                const msgTime = msg.timestamp + '_' + msg.message_id;
-                return msgTime > lastTime;
+            const newMsgs = messages.filter(msg => {
+                const t = msg.timestamp + '_' + msg.message_id;
+                return t > lastTime;
             });
-            if (newMessages.length === 0) return;
-            const lastMsg = newMessages[newMessages.length - 1];
-            lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
-            newMessages.forEach(msg => {
-                saveMessageToHistory(userId, {
-                    message_id: msg.message_id,
-                    text: msg.text,
-                    is_own: msg.is_own,
-                    timestamp: msg.timestamp
-                }, user);
+            if (newMsgs.length === 0) return;
+            const last = newMsgs[newMsgs.length - 1];
+            state.lastMessageTimestamps[userId] = last.timestamp + '_' + last.message_id;
+            newMsgs.forEach(msg => {
+                saveMessageToHistory(userId, { ...msg });
                 if (!msg.is_own) {
-                    unreadMessages[userId] = (unreadMessages[userId] || 0) + 1;
+                    state.unreadMessages[userId] = (state.unreadMessages[userId] || 0) + 1;
                     updateUnreadBadges();
-                    if (!currentChatUser || currentChatUser.id !== userId) {
-                        if (!isFirstLoad) {
+                    if (!state.currentChatUser || state.currentChatUser.id !== userId) {
+                        if (!state.isFirstLoad) {
                             showInfoNotification(`Новое сообщение от ${msg.author_name}`);
                             playNotificationSound();
                         }
                     }
                 }
-                if (currentChatUser && currentChatUser.id === userId) {
+                if (state.currentChatUser?.id === userId) {
                     addMessageToChat(msg.text, msg.is_own, msg.timestamp, msg.message_id);
                 }
             });
-            if (currentChatUser && currentChatUser.id === userId && unreadMessages[userId] > 0) {
-                unreadMessages[userId] = 0;
+            if (state.currentChatUser?.id === userId && state.unreadMessages[userId] > 0) {
+                state.unreadMessages[userId] = 0;
                 updateUnreadBadges();
             }
-        })
-        .catch(err => console.warn('Ошибка загрузки новых сообщений:', err));
+        });
 }
 
-export function checkAllMessages(user, updateUnreadBadgesFn) {
-    if (!user || !user.id) return;
-    fetch(`/api/friends?userId=${encodeURIComponent(user.id)}`)
+export function checkAllMessages(updateUnreadBadgesFn) {
+    if (!state.user?.id) return;
+    fetch(`/api/friends?userId=${encodeURIComponent(state.user.id)}`)
         .then(res => res.json())
         .then(friends => {
-            let totalUnread = 0;
-            friends.forEach(friend => {
-                if (friend.id === user.id) return;
-                fetch(`/api/messages/history?user1_id=${encodeURIComponent(user.id)}&user2_id=${encodeURIComponent(friend.id)}`)
-                    .then(res => res.json())
-                    .then(messages => {
-                        const lastMsg = messages[messages.length - 1];
-                        if (!lastMsg || lastMsg.is_own) return;
-                        const lastTime = lastMessageTimestamps[friend.id] || '';
-                        const newTime = lastMsg.timestamp + lastMsg.message_id;
-                        if (newTime !== lastTime) {
-                            lastMessageTimestamps[friend.id] = newTime;
-                            if (!currentChatUser || currentChatUser.id !== friend.id) {
-                                unreadMessages[friend.id] = (unreadMessages[friend.id] || 0) + 1;
+            let total = 0;
+            friends.filter(f => f.id !== state.user.id).forEach(friend => {
+                fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(friend.id)}`)
+                    .then(r => r.json())
+                    .then(msgs => {
+                        const last = msgs[msgs.length - 1];
+                        if (!last || last.is_own) return;
+                        const newTime = last.timestamp + '_' + last.message_id;
+                        const oldTime = state.lastMessageTimestamps[friend.id] || '';
+                        if (newTime !== oldTime) {
+                            state.lastMessageTimestamps[friend.id] = newTime;
+                            if (!state.currentChatUser || state.currentChatUser.id !== friend.id) {
+                                state.unreadMessages[friend.id] = (state.unreadMessages[friend.id] || 0) + 1;
                                 updateUnreadBadgesFn();
-                                totalUnread += 1;
-                                if (!isFirstLoad) {
+                                total++;
+                                if (!state.isFirstLoad) {
                                     showInfoNotification(`Новое сообщение от ${friend.display_name}`);
                                     playNotificationSound();
                                 }
                             }
                         }
-                    })
-                    .catch(err => console.warn('Ошибка проверки сообщений:', err));
+                    });
             });
-            if (isFirstLoad && totalUnread > 0 && !hasShownSummary) {
-                hasShownSummary = true;
-                if (totalUnread === 1) {
-                    showInfoNotification(`У вас 1 непрочитанное сообщение`);
-                } else {
-                    showInfoNotification(`У вас ${totalUnread} непрочитанных сообщений!`);
-                }
+            if (state.isFirstLoad && total > 0 && !state.hasShownSummary) {
+                state.hasShownSummary = true;
+                showInfoNotification(total === 1 ? 'У вас 1 непрочитанное сообщение' : `У вас ${total} непрочитанных сообщений!`);
                 playNotificationSound();
             }
-            isFirstLoad = false;
-        })
-        .catch(err => console.warn('Ошибка загрузки друзей:', err));
+            state.isFirstLoad = false;
+        });
 }
 
 export function updateUnreadBadges() {
@@ -229,12 +189,12 @@ export function updateUnreadBadges() {
         const userId = item.dataset.userId;
         const container = item.querySelector('.friend-avatar-container, .member-avatar-container');
         if (!userId || !container) return;
-        const oldBadge = container.querySelector('.unread-count-badge');
-        if (oldBadge) oldBadge.remove();
-        if (unreadMessages[userId] > 0) {
+        const old = container.querySelector('.unread-count-badge');
+        if (old) old.remove();
+        if (state.unreadMessages[userId] > 0) {
             const badge = document.createElement('div');
             badge.className = 'unread-count-badge';
-            badge.textContent = unreadMessages[userId] > 9 ? '9+' : unreadMessages[userId];
+            badge.textContent = state.unreadMessages[userId] > 9 ? '9+' : state.unreadMessages[userId];
             container.appendChild(badge);
         }
     });
