@@ -341,18 +341,16 @@ def get_pending_requests():
         if not user_id:
             return jsonify({'error': 'Missing userId'}), 400
 
-        # Загружаем заявки + связанных пользователей
+        # Используем to_user_id, а не target_user_id
         requests = FriendRequest.query.filter_by(
-            target_user_id=user_id,
+            to_user_id=user_id,
             status='pending'
         ).all()
 
         result = []
         for req in requests:
-            # Проверяем, что from_user существует
             if req.from_user is None:
                 continue  # пропускаем битые заявки
-
             result.append({
                 'id': req.id,
                 'from_user': {
