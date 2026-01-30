@@ -124,7 +124,7 @@ document.getElementById('registerBtn').addEventListener('click', async function 
         if (data.success) {
             showNotification('Успешная регистрация!', true);
             setTimeout(() => {
-                window.location.href = 'messenger.html';
+                window.location.href = 'index.html';
             }, 2000);
         } else {
             showNotification(data.error || 'Ошибка регистрации', false);
@@ -165,7 +165,7 @@ document.getElementById('loginBtn').addEventListener('click', async function () 
                 username: data.username,
                 display_name: data.displayName
             }));
-            window.location.href = 'index.html';
+            window.location.href = 'messenger.html';
         } else {
             showNotification(data.error || 'Неверный логин или пароль', false);
         }
