@@ -1,9 +1,141 @@
-import { state } from '../core/state.js';
-import { api } from '../core/api.js';
+import { showNotification } from '../utils/notifications.js';
 import { openChat } from './chat.js';
-// import { showNotification } from './notifications.js';
 
-export function renderFriends(data, tab) {
+/**
+ * Загружает друзей по вкладке
+ */
+export function loadFriends(tab, user, currentTabRef, updateUnreadBadgesFn) {
+    if (tab === 'pending') {
+        fetch('/api/friend-requests/pending', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id })
+        })
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('user');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                return res.json();
+            })
+            .then(data => renderFriends(data, tab, user, updateUnreadBadgesFn))
+            .catch(err => {
+                console.error('Не удалось загрузить:', err);
+                renderFriends([], tab, user, updateUnreadBadgesFn);
+            });
+    } else {
+        let url = `/api/friends?userId=${encodeURIComponent(user.id)}`;
+        if (tab === 'online') {
+            url += '&status=online';
+        }
+
+        fetch(url)
+            .then(res => {
+                if (res.status === 401) {
+                    localStorage.removeItem('user');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                return res.json();
+            })
+            .then(allUsers => {
+                let filtered = allUsers.filter(u => u.id !== user.id);
+                if (tab === 'online') {
+                    filtered = filtered.filter(u => u.is_online);
+                }
+                renderFriends(filtered, tab, user, updateUnreadBadgesFn);
+            })
+            .catch(err => {
+                console.error('Не удалось загрузить:', err);
+                renderFriends([], tab, user, updateUnreadBadgesFn);
+            });
+    }
+}
+
+/**
+ * Поиск друзей
+ */
+export function searchFriends(query, user, updateUnreadBadgesFn) {
+    fetch('/api/friends/search?q=' + encodeURIComponent(query))
+        .then(res => res.json())
+        .then(friends => {
+            let filtered = friends.filter(u => u.id !== user.id);
+            renderFriends(filtered, 'all', user, updateUnreadBadgesFn);
+        })
+        .catch(err => {
+            console.error('Ошибка поиска:', err);
+            renderFriends([], 'all', user, updateUnreadBadgesFn);
+        });
+}
+
+/**
+ * Добавить друга
+ */
+export function addFriend(nickname, user, currentTab) {
+    fetch('/api/friends/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUsername: nickname, requesterId: user.id })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(`Заявка отправлена ${nickname}!`, true);
+                loadFriends(currentTab, user, { currentTab }, () => { }); // updateUnreadBadges временно пустой
+            } else {
+                showNotification(data.error || 'Не удалось добавить друга', false);
+            }
+        })
+        .catch(err => {
+            showNotification('Нет связи с сервером', false);
+        });
+}
+
+/**
+ * Принять заявку
+ */
+export function acceptFriendRequest(requestId, user) {
+    fetch('/api/friend-requests/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: requestId, userId: user.id })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Заявка принята!', true);
+                loadFriends('pending', user, { currentTab: 'pending' }, () => { });
+            } else {
+                showNotification(data.error || 'Ошибка', false);
+            }
+        });
+}
+
+/**
+ * Отклонить заявку
+ */
+export function rejectFriendRequest(requestId, user) {
+    fetch('/api/friend-requests/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: requestId, userId: user.id })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Заявка отклонена', false);
+                loadFriends('pending', user, { currentTab: 'pending' }, () => { });
+            } else {
+                showNotification(data.error || 'Ошибка', false);
+            }
+        });
+}
+
+/**
+ * Отображение списка друзей
+ */
+export function renderFriends(data, tab, user, updateUnreadBadgesFn) {
     const list = document.getElementById('friendsList');
     if (!list) return;
 
@@ -14,7 +146,8 @@ export function renderFriends(data, tab) {
         return;
     }
 
-    for (const item of data) {
+    for (let i = 0; i < data.length; i++) {
+        const item = data[i];
         let isOnline = false;
         let displayName = '';
         let username = '';
@@ -32,7 +165,7 @@ export function renderFriends(data, tab) {
             userId = item.from_user.id;
         }
 
-        if (!displayName || !userId || userId === state.user.id) continue;
+        if (!displayName || !userId || userId === user.id) continue;
 
         const friendItem = document.createElement('div');
         friendItem.className = 'friend-item';
@@ -72,14 +205,7 @@ export function renderFriends(data, tab) {
             acceptBtn.style.background = '#43b581';
             acceptBtn.textContent = 'Принять';
             acceptBtn.addEventListener('click', () => {
-                api.acceptFriendRequest(item.id, state.user.id).then(data => {
-                    if (data.success) {
-                        showNotification('Заявка принята!', true);
-                        loadFriends('pending');
-                    } else {
-                        showNotification(data.error || 'Ошибка', false);
-                    }
-                });
+                acceptFriendRequest(item.id, user);
             });
 
             const rejectBtn = document.createElement('button');
@@ -87,14 +213,7 @@ export function renderFriends(data, tab) {
             rejectBtn.style.background = '#ed4245';
             rejectBtn.textContent = 'Отклонить';
             rejectBtn.addEventListener('click', () => {
-                api.rejectFriendRequest(item.id, state.user.id).then(data => {
-                    if (data.success) {
-                        showNotification('Заявка отклонена', false);
-                        loadFriends('pending');
-                    } else {
-                        showNotification(data.error || 'Ошибка', false);
-                    }
-                });
+                rejectFriendRequest(item.id, user);
             });
 
             actions.appendChild(acceptBtn);
@@ -104,7 +223,7 @@ export function renderFriends(data, tab) {
             msgBtn.className = 'message-btn';
             msgBtn.textContent = 'Написать';
             msgBtn.addEventListener('click', () => {
-                openChat(userId, displayName, username, isOnline);
+                openChat(userId, displayName, username, isOnline, user);
             });
             actions.appendChild(msgBtn);
         }
@@ -115,98 +234,5 @@ export function renderFriends(data, tab) {
         list.appendChild(friendItem);
     }
 
-    updateUnreadBadges();
-}
-
-export function updateUnreadBadges() {
-    document.querySelectorAll('.friend-item, .member-item').forEach(item => {
-        const userId = item.dataset.userId;
-        const container = item.querySelector('.friend-avatar-container, .member-avatar-container');
-        if (!userId || !container) return;
-
-        const oldBadge = container.querySelector('.unread-count-badge');
-        if (oldBadge) oldBadge.remove();
-
-        if (state.unreadMessages[userId] > 0) {
-            const badge = document.createElement('div');
-            badge.className = 'unread-count-badge';
-            badge.textContent = state.unreadMessages[userId] > 9 ? '9+' : state.unreadMessages[userId];
-            container.appendChild(badge);
-        }
-    });
-}
-
-// Вспомогательные функции
-export function loadFriends(tab) {
-    if (tab === 'pending') {
-        api.getPendingRequests(state.user.id).then(data => {
-            renderFriends(data, tab);
-        }).catch(err => {
-            console.error('Не удалось загрузить:', err);
-            renderFriends([], tab);
-        });
-    } else {
-        api.getFriends(state.user.id, tab).then(allUsers => {
-            let filtered = allUsers.filter(u => u.id !== state.user.id);
-            if (tab === 'online') {
-                filtered = filtered.filter(u => u.is_online);
-            }
-            renderFriends(filtered, tab);
-        }).catch(err => {
-            console.error('Не удалось загрузить:', err);
-            renderFriends([], tab);
-        });
-    }
-}
-
-export function searchFriends(query) {
-    api.searchFriends(query).then(friends => {
-        let filtered = friends.filter(u => u.id !== state.user.id);
-        renderFriends(filtered, 'all');
-    }).catch(err => {
-        console.error('Ошибка поиска:', err);
-        renderFriends([], 'all');
-    });
-}
-
-export function addFriend(nickname) {
-    api.addFriend(nickname, state.user.id).then(data => {
-        if (data.success) {
-            showNotification(`Заявка отправлена ${nickname}!`, true);
-            loadFriends(state.currentTab);
-        } else {
-            showNotification(data.error || 'Не удалось добавить друга', false);
-        }
-    }).catch(err => {
-        showNotification('Нет связи с сервером', false);
-    });
-}
-
-export function showNotification(text, isSuccess = false) {
-    const container = document.getElementById('notificationContainer') || (() => {
-        const c = document.createElement('div');
-        c.id = 'notificationContainer';
-        c.className = 'notification-container';
-        document.body.appendChild(c);
-        return c;
-    })();
-
-    const n = document.createElement('div');
-    n.className = `notification ${isSuccess ? 'success' : 'error'}`;
-    n.innerHTML = `
-    <div class="notification-icon">
-      ${isSuccess
-            ? '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 19.414l-6.707-6.707 1.414-1.414L9 16.586l9.293-9.293 1.414 1.414L9 19.414z"/></svg>'
-            : '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>'
-        }
-    </div>
-    <div class="notification-text">${text}</div>
-    <div class="notification-progress"></div>
-  `;
-    container.appendChild(n);
-    setTimeout(() => container.classList.add('show'), 10);
-    setTimeout(() => {
-        n.remove();
-        if (container.children.length === 0) container.classList.remove('show');
-    }, 5000);
+    updateUnreadBadgesFn();
 }
