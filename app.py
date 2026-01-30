@@ -332,32 +332,41 @@ def add_friend():
 
     return jsonify({"success": True})
 
-
 # Заявки в ожидании
-@app.route("/api/friend-requests/pending", methods=["POST"])
+@app.route('/api/friend-requests/pending', methods=['POST'])
 def get_pending_requests():
-    data = request.get_json()
-    user_id = data.get("userId")
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+        if not user_id:
+            return jsonify({'error': 'Missing userId'}), 400
 
-    requests = FriendRequest.query.filter_by(to_user_id=user_id, status="pending").all()
+        # Загружаем заявки + связанных пользователей
+        requests = FriendRequest.query.filter_by(
+            target_user_id=user_id,
+            status='pending'
+        ).all()
 
-    result = []
-    for req in requests:
-        result.append(
-            {
-                "id": req.id,
-                "from_user": {
-                    "id": req.from_user.id,
-                    "username": req.from_user.username,
-                    "display_name": req.from_user.display_name,
-                    "is_online": req.from_user.is_online,
-                },
-            }
-        )
-    return jsonify(result)
+        result = []
+        for req in requests:
+            # Проверяем, что from_user существует
+            if req.from_user is None:
+                continue  # пропускаем битые заявки
 
+            result.append({
+                'id': req.id,
+                'from_user': {
+                    'id': req.from_user.id,
+                    'username': req.from_user.username,
+                    'display_name': req.from_user.display_name,
+                    'is_online': req.from_user.is_online
+                }
+            })
+
+        return jsonify(result)
+    except Exception as e:
+        print("ERROR in /api/friend-requests/pending:", e)
+        return jsonify({'error': 'Internal server error'}), 500
 
 # Принять заявку
 @app.route("/api/friend-requests/accept", methods=["POST"])
