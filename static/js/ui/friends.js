@@ -1,6 +1,7 @@
 import { state } from '../core/state.js';
 import { showNotification } from '../utils/notifications.js';
 import { openChat } from './chat.js';
+import { updateUnreadBadges } from './badges.js';
 
 export function loadFriends(tab) {
     if (tab === 'pending') {
