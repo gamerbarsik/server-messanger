@@ -4,8 +4,8 @@ import { playNotificationSound } from '../utils/audio.js';
 
 export function getMoscowTime() {
     const now = new Date();
-    return new Date(now.getTime() + 3 * 60 * 60 * 1000)
-        .toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+    return moscowTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
 export function saveMessageToHistory(userId, messageData) {
@@ -34,16 +34,24 @@ function addMessageToChat(text, isOwn, timestamp = null, messageId = null) {
     const div = document.createElement('div');
     div.className = `message${isOwn ? ' own' : ''}`;
     if (messageId) div.dataset.messageId = messageId;
-    div.innerHTML = `
-    <div class="message-text">${text}</div>
-    <div class="message-timestamp">${timestamp || getMoscowTime()}</div>
-  `;
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.textContent = text;
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'message-timestamp';
+    timeDiv.textContent = timestamp || getMoscowTime();
+    div.appendChild(textDiv);
+    div.appendChild(timeDiv);
     document.getElementById('chatMessages').appendChild(div);
     document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
 }
 
 export function openChat(userId, displayName, username, isOnline) {
-    if (!userId || userId === state.user.id) return;
+    if (!userId || userId === state.user.id) {
+        console.error('Неверный ID пользователя для чата');
+        return;
+    }
+
     state.currentChatUser = { id: userId, display_name: displayName, username, is_online: isOnline };
     document.getElementById('friendsList').style.display = 'none';
     document.querySelector('.friends-header').style.display = 'none';
@@ -62,17 +70,26 @@ export function openChat(userId, displayName, username, isOnline) {
     }
     document.querySelector('.profile-chat-avatar').textContent = displayName.charAt(0).toUpperCase();
 
-    const hasLocal = loadHistoryFromStorage(userId);
+    const hasLocalHistory = loadHistoryFromStorage(userId);
+
     fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(userId)}`)
         .then(res => res.json())
         .then(messages => {
-            messages.forEach(msg => saveMessageToHistory(userId, { ...msg }));
-            if (!hasLocal) loadHistoryFromStorage(userId);
+            messages.forEach(msg => {
+                saveMessageToHistory(userId, {
+                    message_id: msg.message_id,
+                    text: msg.text,
+                    is_own: msg.is_own,
+                    timestamp: msg.timestamp
+                });
+            });
+            if (!hasLocalHistory) loadHistoryFromStorage(userId);
             if (messages.length > 0) {
-                const last = messages[messages.length - 1];
-                state.lastMessageTimestamps[userId] = last.timestamp + '_' + last.message_id;
+                const lastMsg = messages[messages.length - 1];
+                state.lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
             }
-        });
+        })
+        .catch(err => console.error('Ошибка загрузки истории:', err));
 
     if (state.unreadMessages[userId] > 0) {
         state.unreadMessages[userId] = 0;
@@ -83,22 +100,24 @@ export function openChat(userId, displayName, username, isOnline) {
 export function sendMessage() {
     const text = document.getElementById('messageInput').value.trim();
     if (!text || !state.currentChatUser) return;
+
     const tempId = 'temp_' + Date.now();
-    const time = getMoscowTime();
-    addMessageToChat(text, true, time, tempId);
+    const moscowTime = getMoscowTime();
+    addMessageToChat(text, true, moscowTime, tempId);
     saveMessageToHistory(state.currentChatUser.id, {
         message_id: tempId,
-        text,
+        text: text,
         is_own: true,
-        timestamp: time
+        timestamp: moscowTime
     });
+
     fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             from_user_id: state.user.id,
             to_user_id: state.currentChatUser.id,
-            text
+            text: text
         })
     })
         .then(() => {
@@ -107,8 +126,8 @@ export function sendMessage() {
         })
         .catch(err => {
             showNotification('Ошибка отправки', false);
-            const el = document.querySelector(`[data-message-id="${tempId}"]`);
-            if (el) el.remove();
+            const tempMsg = document.querySelector(`[data-message-id="${tempId}"]`);
+            if (tempMsg) tempMsg.remove();
         });
 }
 
@@ -117,15 +136,20 @@ export function loadNewMessages(userId) {
     fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(userId)}`)
         .then(res => res.json())
         .then(messages => {
-            const newMsgs = messages.filter(msg => {
-                const t = msg.timestamp + '_' + msg.message_id;
-                return t > lastTime;
+            const newMessages = messages.filter(msg => {
+                const msgTime = msg.timestamp + '_' + msg.message_id;
+                return msgTime > lastTime;
             });
-            if (newMsgs.length === 0) return;
-            const last = newMsgs[newMsgs.length - 1];
-            state.lastMessageTimestamps[userId] = last.timestamp + '_' + last.message_id;
-            newMsgs.forEach(msg => {
-                saveMessageToHistory(userId, { ...msg });
+            if (newMessages.length === 0) return;
+            const lastMsg = newMessages[newMessages.length - 1];
+            state.lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
+            newMessages.forEach(msg => {
+                saveMessageToHistory(userId, {
+                    message_id: msg.message_id,
+                    text: msg.text,
+                    is_own: msg.is_own,
+                    timestamp: msg.timestamp
+                });
                 if (!msg.is_own) {
                     state.unreadMessages[userId] = (state.unreadMessages[userId] || 0) + 1;
                     updateUnreadBadges();
@@ -136,52 +160,60 @@ export function loadNewMessages(userId) {
                         }
                     }
                 }
-                if (state.currentChatUser?.id === userId) {
+                if (state.currentChatUser && state.currentChatUser.id === userId) {
                     addMessageToChat(msg.text, msg.is_own, msg.timestamp, msg.message_id);
                 }
             });
-            if (state.currentChatUser?.id === userId && state.unreadMessages[userId] > 0) {
+            if (state.currentChatUser && state.currentChatUser.id === userId && state.unreadMessages[userId] > 0) {
                 state.unreadMessages[userId] = 0;
                 updateUnreadBadges();
             }
-        });
+        })
+        .catch(err => console.warn('Ошибка загрузки новых сообщений:', err));
 }
 
 export function checkAllMessages(updateUnreadBadgesFn) {
-    if (!state.user?.id) return;
+    if (!state.user || !state.user.id) return;
     fetch(`/api/friends?userId=${encodeURIComponent(state.user.id)}`)
         .then(res => res.json())
         .then(friends => {
-            let total = 0;
-            friends.filter(f => f.id !== state.user.id).forEach(friend => {
+            let totalUnread = 0;
+            friends.forEach(friend => {
+                if (friend.id === state.user.id) return;
                 fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(friend.id)}`)
-                    .then(r => r.json())
-                    .then(msgs => {
-                        const last = msgs[msgs.length - 1];
-                        if (!last || last.is_own) return;
-                        const newTime = last.timestamp + '_' + last.message_id;
-                        const oldTime = state.lastMessageTimestamps[friend.id] || '';
-                        if (newTime !== oldTime) {
+                    .then(res => res.json())
+                    .then(messages => {
+                        const lastMsg = messages[messages.length - 1];
+                        if (!lastMsg || lastMsg.is_own) return;
+                        const lastTime = state.lastMessageTimestamps[friend.id] || '';
+                        const newTime = lastMsg.timestamp + lastMsg.message_id;
+                        if (newTime !== lastTime) {
                             state.lastMessageTimestamps[friend.id] = newTime;
                             if (!state.currentChatUser || state.currentChatUser.id !== friend.id) {
                                 state.unreadMessages[friend.id] = (state.unreadMessages[friend.id] || 0) + 1;
                                 updateUnreadBadgesFn();
-                                total++;
+                                totalUnread += 1;
                                 if (!state.isFirstLoad) {
                                     showInfoNotification(`Новое сообщение от ${friend.display_name}`);
                                     playNotificationSound();
                                 }
                             }
                         }
-                    });
+                    })
+                    .catch(err => console.warn('Ошибка проверки сообщений:', err));
             });
-            if (state.isFirstLoad && total > 0 && !state.hasShownSummary) {
+            if (state.isFirstLoad && totalUnread > 0 && !state.hasShownSummary) {
                 state.hasShownSummary = true;
-                showInfoNotification(total === 1 ? 'У вас 1 непрочитанное сообщение' : `У вас ${total} непрочитанных сообщений!`);
+                if (totalUnread === 1) {
+                    showInfoNotification(`У вас 1 непрочитанное сообщение`);
+                } else {
+                    showInfoNotification(`У вас ${totalUnread} непрочитанных сообщений!`);
+                }
                 playNotificationSound();
             }
             state.isFirstLoad = false;
-        });
+        })
+        .catch(err => console.warn('Ошибка загрузки друзей:', err));
 }
 
 export function updateUnreadBadges() {
@@ -189,8 +221,8 @@ export function updateUnreadBadges() {
         const userId = item.dataset.userId;
         const container = item.querySelector('.friend-avatar-container, .member-avatar-container');
         if (!userId || !container) return;
-        const old = container.querySelector('.unread-count-badge');
-        if (old) old.remove();
+        const oldBadge = container.querySelector('.unread-count-badge');
+        if (oldBadge) oldBadge.remove();
         if (state.unreadMessages[userId] > 0) {
             const badge = document.createElement('div');
             badge.className = 'unread-count-badge';
