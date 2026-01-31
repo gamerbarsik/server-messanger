@@ -4,6 +4,7 @@ import string
 from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 app = Flask(__name__, static_folder="static")
 
@@ -16,7 +17,6 @@ if database_url:
 else:
     os.makedirs("instance", exist_ok=True)
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///../instance/messenger.db"
-
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -54,27 +54,19 @@ class FriendRequest(db.Model):
     to_user = db.relationship("User", foreign_keys=[to_user_id])
 
 
-# === Вспомогательная функция: получение реального IP ===
+# === Вспомогательные функции ===
 def get_real_ip():
     if request.environ.get("HTTP_X_FORWARDED_FOR"):
-        # Render, Heroku и другие прокси
         ip = request.environ["HTTP_X_FORWARDED_FOR"].split(",")[0].strip()
     else:
-        # Локальный запуск
         ip = request.remote_addr
     return ip
 
 
-# === Логирование IP при каждом запросе ===
 @app.before_request
 def log_request_info():
     ip = get_real_ip()
     print(f"📥 Запрос от IP: {ip} → {request.method} {request.path}")
-
-
-# === Создание таблиц ===
-with app.app_context():
-    db.create_all()
 
 
 def generate_user_id():
@@ -83,9 +75,14 @@ def generate_user_id():
 
 def generate_message_id():
     while True:
-        msg_id = random.randint(1, 999999999)
+        msg_id = random.randint(100000000, 999999999)
         if not Message.query.filter_by(message_id=msg_id).first():
             return msg_id
+
+
+# === Создание таблиц ===
+with app.app_context():
+    db.create_all()
 
 
 # === Роуты ===
@@ -146,7 +143,6 @@ def login():
     data = request.get_json()
     identifier = data.get("identifier", "").strip()
     password = data.get("password", "")
-
     user = User.query.filter_by(username=identifier).first()
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Неверный логин или пароль"}), 401
@@ -180,21 +176,6 @@ def logout():
             db.session.commit()
     return jsonify({"success": True})
 
-# === Проверка авторизации ===
-@app.route("/api/check-auth", methods=["POST"])
-def check_auth():
-    data = request.get_json()
-    user_id = data.get("user_id")
-    username = data.get("username")
-
-    if not user_id or not username:
-        return jsonify({"authorized": False}), 403
-
-    user = User.query.filter_by(id=user_id, username=username).first()
-    if user:
-        return jsonify({"authorized": True})
-    else:
-        return jsonify({"authorized": False}), 403
 
 # Heartbeat
 @app.route("/api/heartbeat", methods=["POST"])
@@ -221,7 +202,6 @@ def online_users():
         ).all()
     else:
         users = User.query.filter_by(is_online=True).all()
-
     result = []
     for u in users:
         result.append(
@@ -241,7 +221,6 @@ def get_all_friends():
     user_id = request.args.get("userId")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
-
     accepted_requests = FriendRequest.query.filter(
         (
             (FriendRequest.from_user_id == user_id)
@@ -258,7 +237,6 @@ def get_all_friends():
             friend_ids.add(req.from_user_id)
 
     users = User.query.filter(User.id.in_(friend_ids)).all()
-
     result = []
     for u in users:
         result.append(
@@ -278,7 +256,6 @@ def search_friends():
     q = request.args.get("q", "").strip().lower()
     if not q:
         return jsonify([])
-
     users = User.query.filter(
         User.display_name.ilike(f"%{q}%") | User.username.ilike(f"%{q}%")
     ).all()
@@ -301,7 +278,6 @@ def add_friend():
     data = request.get_json()
     target_username = data.get("targetUsername")
     requester_id = data.get("requesterId")
-
     if not target_username or not requester_id:
         return jsonify({"error": "Не хватает данных"}), 400
 
@@ -332,47 +308,48 @@ def add_friend():
 
     return jsonify({"success": True})
 
+
 # Заявки в ожидании
-@app.route('/api/friend-requests/pending', methods=['POST'])
+@app.route("/api/friend-requests/pending", methods=["POST"])
 def get_pending_requests():
     try:
         data = request.get_json()
-        user_id = data.get('userId')
+        user_id = data.get("userId")
         if not user_id:
-            return jsonify({'error': 'Missing userId'}), 400
+            return jsonify({"error": "Missing userId"}), 400
 
-        # Используем to_user_id, а не target_user_id
         requests = FriendRequest.query.filter_by(
-            to_user_id=user_id,
-            status='pending'
+            to_user_id=user_id, status="pending"
         ).all()
 
         result = []
         for req in requests:
             if req.from_user is None:
-                continue  # пропускаем битые заявки
-            result.append({
-                'id': req.id,
-                'from_user': {
-                    'id': req.from_user.id,
-                    'username': req.from_user.username,
-                    'display_name': req.from_user.display_name,
-                    'is_online': req.from_user.is_online
+                continue
+            result.append(
+                {
+                    "id": req.id,
+                    "from_user": {
+                        "id": req.from_user.id,
+                        "username": req.from_user.username,
+                        "display_name": req.from_user.display_name,
+                        "is_online": req.from_user.is_online,
+                    },
                 }
-            })
+            )
 
         return jsonify(result)
     except Exception as e:
         print("ERROR in /api/friend-requests/pending:", e)
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
-# Принять заявку
+
+# Принять/отклонить заявку
 @app.route("/api/friend-requests/accept", methods=["POST"])
 def accept_friend_request():
     data = request.get_json()
     request_id = data.get("requestId")
     user_id = data.get("userId")
-
     req = FriendRequest.query.filter_by(id=request_id, to_user_id=user_id).first()
     if not req:
         return jsonify({"error": "Заявка не найдена"}), 404
@@ -382,13 +359,11 @@ def accept_friend_request():
     return jsonify({"success": True})
 
 
-# Отклонить заявку
 @app.route("/api/friend-requests/reject", methods=["POST"])
 def reject_friend_request():
     data = request.get_json()
     request_id = data.get("requestId")
     user_id = data.get("userId")
-
     req = FriendRequest.query.filter_by(id=request_id, to_user_id=user_id).first()
     if not req:
         return jsonify({"error": "Заявка не найдена"}), 404
@@ -404,7 +379,6 @@ def update_profile():
     data = request.get_json()
     user_id = data.get("userId")
     display_name = data.get("displayName", "").strip()
-
     if not user_id or not display_name or len(display_name) < 2:
         return jsonify({"error": "Неверные данные"}), 400
 
@@ -423,7 +397,6 @@ def update_profile():
 def get_user():
     data = request.get_json()
     user_id = data.get("user_id")
-
     if not user_id:
         return jsonify({"error": "Не указан ID"}), 400
 
@@ -441,18 +414,20 @@ def get_user():
     )
 
 
-# Отправить сообщение
+# === ОСНОВНОЕ: ОТПРАВКА СООБЩЕНИЯ ===
 @app.route("/api/messages/send", methods=["POST"])
 def send_dm_message():
     data = request.get_json()
     from_user_id = data.get("from_user_id")
     to_user_id = data.get("to_user_id")
     text = data.get("text", "").strip()
-
     if not from_user_id or not to_user_id or not text:
         return jsonify({"error": "Не хватает данных"}), 400
 
+    # Генерация уникального ID
     message_id = generate_message_id()
+
+    # Сохранение в БД
     msg = Message(
         message_id=message_id,
         from_user_id=from_user_id,
@@ -462,15 +437,26 @@ def send_dm_message():
     db.session.add(msg)
     db.session.commit()
 
-    return jsonify({"success": True})
+    # Формат времени в MSK (UTC+3)
+    moscow_time = msg.created_at.strftime("%H:%M")
+
+    # Возвращаем полный объект сообщения
+    return jsonify(
+        {
+            "success": True,
+            "message_id": message_id,
+            "text": text,
+            "is_own": True,
+            "timestamp": moscow_time,
+        }
+    )
 
 
-# Получить историю сообщений
+# === ИСТОРИЯ СООБЩЕНИЙ ===
 @app.route("/api/messages/history")
 def get_dm_history():
     user1_id = request.args.get("user1_id")
     user2_id = request.args.get("user2_id")
-
     if not user1_id or not user2_id:
         return jsonify({"error": "Не хватает данных"}), 400
 
@@ -486,29 +472,29 @@ def get_dm_history():
     result = []
     for msg in messages:
         author = User.query.get(msg.from_user_id)
+        is_own = msg.from_user_id == user1_id
         result.append(
             {
                 "message_id": msg.message_id,
                 "author_name": author.display_name if author else "Unknown",
                 "text": msg.text,
-                "is_own": msg.from_user_id == user1_id,
+                "is_own": is_own,
                 "is_read": msg.is_read,
-                "timestamp": msg.created_at.strftime("%H:%M") if msg.created_at else "",
+                "timestamp": msg.created_at.strftime("%H:%M"),
             }
         )
     return jsonify(result)
 
 
+# Отметить как прочитанное
 @app.route("/api/messages/mark-read", methods=["POST"])
 def mark_messages_as_read():
     data = request.get_json()
     user_id = data.get("user_id")
     sender_id = data.get("sender_id")
-
     if not user_id or not sender_id:
         return jsonify({"error": "Не хватает данных"}), 400
 
-    # Отмечаем все сообщения от sender_id как прочитанные
     messages = Message.query.filter_by(
         to_user_id=user_id, from_user_id=sender_id, is_read=False
     ).all()
