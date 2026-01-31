@@ -1018,7 +1018,7 @@ body {
         width: 44px;
         height: 44px;
         border-radius: 50%;
-        background: var(--accent);
+        background: var(--online);
         color: white;
         font-size: 24px;
         font-weight: bold;
@@ -1037,7 +1037,7 @@ body {
     #addFriendBtn.add-friend-btn:hover {
         transform: none;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        background: var(--accent);
+        background: var(--online);
         /* без hover-эффекта */
     }
 

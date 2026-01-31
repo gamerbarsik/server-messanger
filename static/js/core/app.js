@@ -212,6 +212,16 @@ export function initApp() {
         });
     }
 
+    // === Установка текста кнопки "Добавить в друзья" в зависимости от устройства ===
+    const addFriendBtn = document.getElementById('addFriendBtn');
+    if (addFriendBtn) {
+        if (window.innerWidth >= 768) {
+            addFriendBtn.textContent = 'Добавить в друзья';
+        } else {
+            addFriendBtn.textContent = '+';
+        }
+    }
+
     startMessagePolling();
 
     // Вызов инициализации

@@ -102,15 +102,8 @@ export function sendMessage() {
     const text = document.getElementById('messageInput').value.trim();
     if (!text || !state.currentChatUser) return;
 
-    const tempId = 'temp_' + Date.now();
-    const moscowTime = getMoscowTime();
-    addMessageToChat(text, true, moscowTime, tempId);
-    saveMessageToHistory(state.currentChatUser.id, {
-        message_id: tempId,
-        text: text,
-        is_own: true,
-        timestamp: moscowTime
-    });
+    // НЕ добавляем сообщение в UI сразу!
+    // Только отправляем запрос
 
     fetch('/api/messages/send', {
         method: 'POST',
@@ -121,14 +114,11 @@ export function sendMessage() {
             text: text
         })
     })
-        .then(res => res.json()) // ← добавь это
+        .then(res => res.json())
         .then(data => {
-            // Удаляем временное сообщение
-            const tempMsg = document.querySelector(`[data-message-id="${tempId}"]`);
-            if (tempMsg) tempMsg.remove();
-
-            // Добавляем настоящее сообщение от сервера
             if (data.message_id) {
+                const moscowTime = getMoscowTime();
+                // Теперь добавляем сообщение — только после подтверждения от сервера
                 addMessageToChat(text, true, moscowTime, data.message_id);
                 saveMessageToHistory(state.currentChatUser.id, {
                     message_id: data.message_id,
@@ -138,13 +128,11 @@ export function sendMessage() {
                 });
                 state.lastMessageTimestamps[state.currentChatUser.id] = moscowTime + '_' + data.message_id;
             }
-
             document.getElementById('messageInput').value = '';
         })
         .catch(err => {
             showNotification('Ошибка отправки', false);
-            const tempMsg = document.querySelector(`[data-message-id="${tempId}"]`);
-            if (tempMsg) tempMsg.remove();
+            // Ничего не удаляем — мы ничего и не добавляли
         });
 }
 
