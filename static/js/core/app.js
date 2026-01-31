@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { initAudio, unlockAudio } from '../utils/audio.js';
 import { loadFriends, renderFriends, searchFriends, addFriend, loadOnlineUsers } from '../ui/friends.js';
-import { openChat, sendMessage, checkAllMessages } from '../ui/chat.js';
+import { openChat, sendMessage, checkAllMessages, loadNewMessages } from '../ui/chat.js';
 import { initMobileUI } from '../ui/mobile.js';
 import { updateUnreadBadges } from '../ui/badges.js';
 import { showNotification } from '../utils/notifications.js';
@@ -212,6 +212,8 @@ export function initApp() {
         });
     }
 
+    startMessagePolling();
+
     // Вызов инициализации
     initModals();
 
@@ -226,5 +228,29 @@ export function initApp() {
         document.querySelector('.search-box').style.display = 'flex';
     }, 100);
 
-    setInterval(() => checkAllMessages(updateUnreadBadges), 1500);
+    // setInterval(() => checkAllMessages(updateUnreadBadges), 1500);
+    // === Умное обновление сообщений ===
+    function startMessagePolling() {
+        const poll = () => {
+            if (state.currentChatUser) {
+                loadNewMessages(state.currentChatUser.id);
+            }
+
+            // Проверка новых сообщений от других друзей
+            fetch(`/api/friends?userId=${encodeURIComponent(state.user.id)}`)
+                .then(res => res.json())
+                .then(friends => {
+                    friends.forEach(friend => {
+                        if (friend.id === state.user.id || (state.currentChatUser && state.currentChatUser.id === friend.id)) return;
+                        loadNewMessages(friend.id);
+                    });
+                })
+                .catch(err => console.warn('Ошибка фоновой проверки:', err));
+        };
+
+        poll();
+        setInterval(poll, 1500);
+    }
+
+    startMessagePolling();
 }

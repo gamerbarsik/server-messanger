@@ -121,9 +121,25 @@ export function sendMessage() {
             text: text
         })
     })
-        .then(() => {
+        .then(res => res.json()) // ← добавь это
+        .then(data => {
+            // Удаляем временное сообщение
+            const tempMsg = document.querySelector(`[data-message-id="${tempId}"]`);
+            if (tempMsg) tempMsg.remove();
+
+            // Добавляем настоящее сообщение от сервера
+            if (data.message_id) {
+                addMessageToChat(text, true, moscowTime, data.message_id);
+                saveMessageToHistory(state.currentChatUser.id, {
+                    message_id: data.message_id,
+                    text: text,
+                    is_own: true,
+                    timestamp: moscowTime
+                });
+                state.lastMessageTimestamps[state.currentChatUser.id] = moscowTime + '_' + data.message_id;
+            }
+
             document.getElementById('messageInput').value = '';
-            loadNewMessages(state.currentChatUser.id);
         })
         .catch(err => {
             showNotification('Ошибка отправки', false);
@@ -132,46 +148,34 @@ export function sendMessage() {
         });
 }
 
-export function loadNewMessages(userId) {
-    const lastTime = state.lastMessageTimestamps[userId] || '';
-    fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(userId)}`)
-        .then(res => res.json())
-        .then(messages => {
-            const newMessages = messages.filter(msg => {
-                const msgTime = msg.timestamp + '_' + msg.message_id;
-                return msgTime > lastTime;
-            });
-            if (newMessages.length === 0) return;
-            const lastMsg = newMessages[newMessages.length - 1];
-            state.lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
-            newMessages.forEach(msg => {
-                saveMessageToHistory(userId, {
-                    message_id: msg.message_id,
-                    text: msg.text,
-                    is_own: msg.is_own,
-                    timestamp: msg.timestamp
-                });
-                if (!msg.is_own) {
-                    state.unreadMessages[userId] = (state.unreadMessages[userId] || 0) + 1;
-                    updateUnreadBadges();
-                    if (!state.currentChatUser || state.currentChatUser.id !== userId) {
-                        if (!state.isFirstLoad) {
-                            showInfoNotification(`Новое сообщение от ${msg.author_name}`);
-                            playNotificationSound();
-                        }
-                    }
-                }
-                if (state.currentChatUser && state.currentChatUser.id === userId) {
-                    addMessageToChat(msg.text, msg.is_own, msg.timestamp, msg.message_id);
-                }
-            });
-            if (state.currentChatUser && state.currentChatUser.id === userId && state.unreadMessages[userId] > 0) {
-                state.unreadMessages[userId] = 0;
-                updateUnreadBadges();
+newMessages.forEach(msg => {
+    // Защита от дублирования собственных сообщений
+    if (msg.is_own && document.querySelector(`[data-message-id="${msg.message_id}"]`)) {
+        return; // пропускаем дубль
+    }
+
+    saveMessageToHistory(userId, {
+        message_id: msg.message_id,
+        text: msg.text,
+        is_own: msg.is_own,
+        timestamp: msg.timestamp
+    });
+
+    if (!msg.is_own) {
+        state.unreadMessages[userId] = (state.unreadMessages[userId] || 0) + 1;
+        updateUnreadBadges();
+        if (!state.currentChatUser || state.currentChatUser.id !== userId) {
+            if (!state.isFirstLoad) {
+                showInfoNotification(`Новое сообщение от ${msg.author_name}`);
+                playNotificationSound();
             }
-        })
-        .catch(err => console.warn('Ошибка загрузки новых сообщений:', err));
-}
+        }
+    }
+
+    if (state.currentChatUser && state.currentChatUser.id === userId) {
+        addMessageToChat(msg.text, msg.is_own, msg.timestamp, msg.message_id);
+    }
+});
 
 export function checkAllMessages(updateUnreadBadgesFn) {
     if (!state.user || !state.user.id) return;
@@ -216,21 +220,3 @@ export function checkAllMessages(updateUnreadBadgesFn) {
         })
         .catch(err => console.warn('Ошибка загрузки друзей:', err));
 }
-
-// export function updateUnreadBadges() {
-//     document.querySelectorAll('.friend-item, .member-item').forEach(item => {
-//         const userId = item.dataset.userId;
-//         const container = item.querySelector('.friend-avatar-container, .member-avatar-container');
-//         if (!userId || !container) return;
-
-//         const oldBadge = container.querySelector('.unread-count-badge');
-//         if (oldBadge) oldBadge.remove();
-
-//         if (state.unreadMessages[userId] > 0) {
-//             const badge = document.createElement('div');
-//             badge.className = 'unread-count-badge';
-//             badge.textContent = state.unreadMessages[userId] > 9 ? '9+' : state.unreadMessages[userId];
-//             container.appendChild(badge);
-//         }
-//     });
-// }
