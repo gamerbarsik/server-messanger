@@ -148,35 +148,6 @@ export function sendMessage() {
         });
 }
 
-newMessages.forEach(msg => {
-    // Защита от дублирования собственных сообщений
-    if (msg.is_own && document.querySelector(`[data-message-id="${msg.message_id}"]`)) {
-        return; // пропускаем дубль
-    }
-
-    saveMessageToHistory(userId, {
-        message_id: msg.message_id,
-        text: msg.text,
-        is_own: msg.is_own,
-        timestamp: msg.timestamp
-    });
-
-    if (!msg.is_own) {
-        state.unreadMessages[userId] = (state.unreadMessages[userId] || 0) + 1;
-        updateUnreadBadges();
-        if (!state.currentChatUser || state.currentChatUser.id !== userId) {
-            if (!state.isFirstLoad) {
-                showInfoNotification(`Новое сообщение от ${msg.author_name}`);
-                playNotificationSound();
-            }
-        }
-    }
-
-    if (state.currentChatUser && state.currentChatUser.id === userId) {
-        addMessageToChat(msg.text, msg.is_own, msg.timestamp, msg.message_id);
-    }
-});
-
 export function checkAllMessages(updateUnreadBadgesFn) {
     if (!state.user || !state.user.id) return;
     fetch(`/api/friends?userId=${encodeURIComponent(state.user.id)}`)
