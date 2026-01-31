@@ -220,3 +220,52 @@ export function checkAllMessages(updateUnreadBadgesFn) {
         })
         .catch(err => console.warn('Ошибка загрузки друзей:', err));
 }
+
+export function loadNewMessages(userId) {
+    const lastTime = state.lastMessageTimestamps[userId] || '';
+
+    fetch(`/api/messages/history?user1_id=${encodeURIComponent(state.user.id)}&user2_id=${encodeURIComponent(userId)}`)
+        .then(res => res.json())
+        .then(messages => {
+            const newMessages = messages.filter(msg => {
+                const msgKey = msg.timestamp + '_' + msg.message_id;
+                return msgKey > lastTime;
+            });
+
+            if (newMessages.length === 0) return;
+
+            const lastMsg = newMessages[newMessages.length - 1];
+            state.lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
+
+            newMessages.forEach(msg => {
+                // Защита от дублирования собственных сообщений
+                if (msg.is_own && document.querySelector(`[data-message-id="${msg.message_id}"]`)) {
+                    return;
+                }
+
+                saveMessageToHistory(userId, { ...msg });
+
+                if (!msg.is_own) {
+                    state.unreadMessages[userId] = (state.unreadMessages[userId] || 0) + 1;
+                    updateUnreadBadges();
+
+                    if (!state.currentChatUser || state.currentChatUser.id !== userId) {
+                        if (!state.isFirstLoad) {
+                            showInfoNotification(`Новое сообщение от ${msg.author_name}`);
+                            playNotificationSound();
+                        }
+                    }
+                }
+
+                if (state.currentChatUser?.id === userId) {
+                    addMessageToChat(msg.text, msg.is_own, msg.timestamp, msg.message_id);
+                }
+            });
+
+            if (state.currentChatUser?.id === userId && state.unreadMessages[userId] > 0) {
+                state.unreadMessages[userId] = 0;
+                updateUnreadBadges();
+            }
+        })
+        .catch(err => console.warn('Ошибка загрузки новых сообщений:', err));
+}
