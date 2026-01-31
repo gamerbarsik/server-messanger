@@ -102,9 +102,10 @@ export function sendMessage() {
     const text = document.getElementById('messageInput').value.trim();
     if (!text || !state.currentChatUser) return;
 
-    // НЕ добавляем сообщение в UI сразу!
-    // Только отправляем запрос
+    // Очищаем поле сразу — улучшает UX
+    document.getElementById('messageInput').value = '';
 
+    // Отправляем запрос
     fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,23 +117,24 @@ export function sendMessage() {
     })
         .then(res => res.json())
         .then(data => {
-            if (data.message_id) {
-                const moscowTime = getMoscowTime();
-                // Теперь добавляем сообщение — только после подтверждения от сервера
-                addMessageToChat(text, true, moscowTime, data.message_id);
+            // Проверяем, что сервер вернул корректное сообщение
+            if (data.message_id && data.text && typeof data.is_own !== 'undefined') {
+                const moscowTime = data.timestamp || getMoscowTime(); // берём время от сервера, если есть
+                addMessageToChat(data.text, data.is_own, moscowTime, data.message_id);
                 saveMessageToHistory(state.currentChatUser.id, {
                     message_id: data.message_id,
-                    text: text,
-                    is_own: true,
+                    text: data.text,
+                    is_own: data.is_own,
                     timestamp: moscowTime
                 });
                 state.lastMessageTimestamps[state.currentChatUser.id] = moscowTime + '_' + data.message_id;
+            } else {
+                showNotification('Сообщение отправлено, но не отображено', false);
             }
-            document.getElementById('messageInput').value = '';
         })
         .catch(err => {
             showNotification('Ошибка отправки', false);
-            // Ничего не удаляем — мы ничего и не добавляли
+            // Не добавляем ничего — ждём повторной отправки
         });
 }
 
@@ -197,8 +199,8 @@ export function loadNewMessages(userId) {
             state.lastMessageTimestamps[userId] = lastMsg.timestamp + '_' + lastMsg.message_id;
 
             newMessages.forEach(msg => {
-                // Защита от дублирования собственных сообщений
-                if (msg.is_own && document.querySelector(`[data-message-id="${msg.message_id}"]`)) {
+                // Пропускаем, если сообщение уже есть в DOM
+                if (document.querySelector(`[data-message-id="${msg.message_id}"]`)) {
                     return;
                 }
 
@@ -216,6 +218,7 @@ export function loadNewMessages(userId) {
                     }
                 }
 
+                // Отображаем ТОЛЬКО если это текущий чат
                 if (state.currentChatUser?.id === userId) {
                     addMessageToChat(msg.text, msg.is_own, msg.timestamp, msg.message_id);
                 }
